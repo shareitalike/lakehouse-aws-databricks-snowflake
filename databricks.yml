@@ -7,7 +7,7 @@
 
 bundle:
   name: retailedge_pipeline
-  databricks_cli_version: ">= 0.209"
+  databricks_cli_version: ">= 0.209.0"
 
 resources:
   # 1. Delta Live Tables Pipeline Definition
@@ -88,10 +88,10 @@ resources:
 targets:
   dev:
     workspace:
-      host: "https://<YOUR-DATABRICKS-WORKSPACE-URL>"
+      host: "https://dbc-7a5fe539-3196.cloud.databricks.com"
   prod:
     workspace:
-      host: "https://<YOUR-DATABRICKS-WORKSPACE-URL>"
+      host: "https://dbc-7a5fe539-3196.cloud.databricks.com"
     resources:
       pipelines:
         retailedge_dlt_pipeline:

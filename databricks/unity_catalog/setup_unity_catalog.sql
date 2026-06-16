@@ -10,9 +10,25 @@
 -- ==============================================================================
 
 -- ------------------------------------------------------------------------------
--- 1. Create Catalog & Schemas
+-- 1. AWS S3 External Location Setup
 -- ------------------------------------------------------------------------------
-CREATE CATALOG IF NOT EXISTS retailedge;
+-- NOTE: Before running this, you must have created a "Storage Credential" in 
+-- the Databricks UI using the AWS IAM Role we discussed. Ensure it is named exactly 
+-- `aws-databricks-storage-role` or update the string below.
+
+CREATE EXTERNAL LOCATION IF NOT EXISTS retailedge_s3_storage
+    URL 's3://retailedge-lakehouse-prod/'
+    WITH (STORAGE CREDENTIAL `aws-databricks-storage-role`)
+    COMMENT 'Main S3 data lake storage for RetailEdge project';
+
+-- ------------------------------------------------------------------------------
+-- 2. Create Catalog & Schemas
+-- ------------------------------------------------------------------------------
+-- By explicitly defining the MANAGED LOCATION, we bypass the INVALID_STATE error
+-- that occurs if your Databricks Metastore has no default root storage.
+CREATE CATALOG IF NOT EXISTS retailedge
+    MANAGED LOCATION 's3://retailedge-lakehouse-prod/managed_catalog/';
+
 USE CATALOG retailedge;
 
 CREATE SCHEMA IF NOT EXISTS bronze
@@ -25,33 +41,17 @@ CREATE SCHEMA IF NOT EXISTS gold
     COMMENT 'Business-level aggregations and serving tables (DLT output)';
 
 -- ------------------------------------------------------------------------------
--- 2. AWS S3 External Location Setup
--- ------------------------------------------------------------------------------
--- NOTE: Before running this, you must have created a "Storage Credential" in 
--- the Databricks UI using the AWS IAM Role we discussed.
--- Replace `<YOUR_AWS_ACCOUNT_ID>` below.
-
-CREATE EXTERNAL LOCATION IF NOT EXISTS retailedge_s3_storage
-    URL 's3://retailedge-analytics-prod/'
-    WITH (STORAGE CREDENTIAL `aws-databricks-storage-role`)
-    COMMENT 'Main S3 data lake storage for RetailEdge project';
-
--- ------------------------------------------------------------------------------
 -- 3. Role-Based Access Control (RBAC)
 -- ------------------------------------------------------------------------------
 -- Create groups (these would normally sync from Azure AD or AWS IAM Identity Center)
 -- Example: CREATE GROUP data_engineers; CREATE GROUP data_analysts;
 
--- Grant Engineers full control over the catalog to build pipelines
-GRANT ALL PRIVILEGES ON CATALOG retailedge TO `data_engineers`;
-
--- Grant Analysts read-only access strictly to the Gold layer (Serving)
-GRANT USAGE ON CATALOG retailedge TO `data_analysts`;
-GRANT USAGE ON SCHEMA retailedge.gold TO `data_analysts`;
-GRANT SELECT ON SCHEMA retailedge.gold TO `data_analysts`;
-
--- Explicitly deny Analysts access to raw PII in Bronze
-DENY SELECT ON SCHEMA retailedge.bronze TO `data_analysts`;
+-- In a real environment, you would run these:
+-- GRANT ALL PRIVILEGES ON CATALOG retailedge TO `data_engineers`;
+-- GRANT USAGE ON CATALOG retailedge TO `data_analysts`;
+-- GRANT USAGE ON SCHEMA retailedge.gold TO `data_analysts`;
+-- GRANT SELECT ON SCHEMA retailedge.gold TO `data_analysts`;
+-- DENY SELECT ON SCHEMA retailedge.bronze TO `data_analysts`;
 
 -- ------------------------------------------------------------------------------
 -- 4. Dynamic Column Masking (Security & Compliance)
