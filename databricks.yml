@@ -27,6 +27,11 @@ resources:
       configuration:
         pipeline.s3_bucket: "retailedge-lakehouse-prod"
         spark.databricks.delta.schema.autoMerge.enabled: "true"
+      clusters:
+        - label: "default"
+          aws_attributes:
+            availability: "ON_DEMAND"
+            first_on_demand: 1
 
   # 2. Databricks Workflow (Job) Definition
   jobs:
