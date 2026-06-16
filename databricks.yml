@@ -14,7 +14,8 @@ resources:
   pipelines:
     retailedge_dlt_pipeline:
       name: "RetailEdge DLT Pipeline (Bronze->Silver->Gold)"
-      target: "retailedge.silver"
+      catalog: "retailedge"
+      target: "silver"
       development: true           # Set to false in prod for dedicated job clusters
       continuous: false           # Triggered mode — ~70% cheaper than Continuous
       channel: "CURRENT"          # Use latest Databricks runtime channel
@@ -24,7 +25,7 @@ resources:
         - notebook:
             path: ./databricks/dlt/pipeline_silver_to_gold.py
       configuration:
-        pipeline.s3_bucket: "retailedge-analytics-prod"
+        pipeline.s3_bucket: "retailedge-lakehouse-prod"
         spark.databricks.delta.schema.autoMerge.enabled: "true"
 
   # 2. Databricks Workflow (Job) Definition
