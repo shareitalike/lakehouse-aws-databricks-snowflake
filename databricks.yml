@@ -29,8 +29,9 @@ resources:
         spark.databricks.delta.schema.autoMerge.enabled: "true"
       clusters:
         - label: "default"
+          spark_conf:
+            spark.databricks.unityCatalog.enabled: "true"
           aws_attributes:
-            instance_profile_arn: "arn:aws:iam::987684850401:role/databricks-1x6gns5kimszggxacnhjkl-cloud-storage-role"
             availability: "ON_DEMAND"
 
 
