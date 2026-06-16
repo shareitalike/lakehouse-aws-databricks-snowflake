@@ -18,7 +18,7 @@ from pyspark.sql import functions as F
 # In a real DLT pipeline, paths are often parameterized or managed by Unity Catalog Volumes
 # For this project, we map to our S3 bucket.
 S3_BUCKET = spark.conf.get("pipeline.s3_bucket", "retailedge-analytics-prod")
-BRONZE_PATH = f"s3a://{S3_BUCKET}/bronze/events/"
+BRONZE_PATH = f"s3://{S3_BUCKET}/bronze/events/"
 
 # ==============================================================================
 # 1. BRONZE LAYER (Ingestion)
