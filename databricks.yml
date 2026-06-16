@@ -16,7 +16,7 @@ resources:
       name: "RetailEdge DLT Pipeline (Bronze->Silver->Gold)"
       catalog: "retailedge"
       target: "silver"
-      development: true           # Set to false in prod for dedicated job clusters
+      development: false           # Set to false to bypass AWS trial NAT gateway connection resets
       continuous: false           # Triggered mode — ~70% cheaper than Continuous
       channel: "CURRENT"          # Use latest Databricks runtime channel
       libraries:
