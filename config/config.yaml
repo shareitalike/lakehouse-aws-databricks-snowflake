@@ -12,7 +12,7 @@ kinesis:
   # Cost: ~$11/month. Delete when not studying.
 
 s3:
-  bucket_name: "retailedge-analytics-prod"         # Suggested unique name
+  bucket_name: "retailedge-lakehouse-prod"         # Suggested unique name
   bronze_prefix: "bronze/events"
   silver_prefix: "silver/events"
   gold_prefix: "gold"
