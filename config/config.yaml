@@ -1,0 +1,93 @@
+# =============================================================================
+# Real-Time Event Analytics Platform — Configuration
+# =============================================================================
+
+aws:
+  region: "us-east-1"
+  account_id: "987684850401"       # Updated with your ID
+
+kinesis:
+  stream_name: "user-activity-stream"
+  shard_count: 1                          # 1 shard = 1 MB/s = 1000 rec/s
+  # Cost: ~$11/month. Delete when not studying.
+
+s3:
+  bucket_name: "retailedge-analytics-prod"         # Suggested unique name
+  bronze_prefix: "bronze/events"
+  silver_prefix: "silver/events"
+  gold_prefix: "gold"
+  quarantine_prefix: "quarantine/events"
+  metadata_prefix: "metadata"             # Stores watermark files
+
+lambda:
+  function_name: "kinesis-event-processor"
+  runtime: "python3.11"
+  timeout_seconds: 60
+  memory_mb: 256
+  batch_size: 100
+
+databricks:
+  cluster_type: "enterprise_aws"          # Deployed in client VPC, us-east-1
+  spark_version: "14.3 LTS"              # 14.3 LTS — current Enterprise LTS (2025)
+  
+  # Certification Focus: Unity Catalog integration
+  unity_catalog:
+    catalog: "retailedge"
+    schemas:
+      bronze: "bronze"
+      silver: "silver"
+      gold: "gold"
+      
+  # Certification Focus: Asset Bundle Deployment
+  asset_bundle:
+    target_env: "dev"
+    pipeline_name: "RetailEdge DLT Pipeline"
+
+snowflake:
+  account: "YOUR_SNOWFLAKE_ACCOUNT"       # Format: <org>-<account> e.g. myorg-us-east-1
+  region: "us-east-1"                     # Snowflake AWS us-east-1 region
+  warehouse: "COMPUTE_XS"                 # X-Small = 1 credit/hour
+  database: "EVENT_ANALYTICS"
+  schema: "ANALYTICS"
+  auto_suspend_seconds: 60                # Suspend after 60s idle — cost control
+  # Auto-suspend at 60s helps keep costs low during development.
+
+athena:
+  database_name: "event_analytics"
+  output_location: "s3://pyspark_analytics_987684850401/athena-results/"
+
+# ---------------------------------------------------------------------------
+# Event simulation parameters
+# ---------------------------------------------------------------------------
+producer:
+  events_per_second: 10
+  batch_size: 25
+  total_events: 5000                      # Free-tier safe volume
+  bad_record_percentage: 5
+
+  event_distribution:
+    product_view: 60
+    add_to_cart: 20
+    purchase: 10
+    login: 5
+    logout: 5
+
+  devices:
+    mobile: 55
+    desktop: 35
+    tablet: 10
+
+  countries:
+    - US
+    - IN
+    - GB
+    - DE
+    - FR
+    - JP
+    - BR
+    - CA
+    - AU
+    - SG
+    - TH
+    - MY
+    - KR

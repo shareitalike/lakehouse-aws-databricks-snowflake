@@ -1,0 +1,98 @@
+# ==============================================================================
+# Databricks Asset Bundle (DAB) — Pipeline & Workflow Definition
+# ==============================================================================
+# Defines the DLT pipeline and daily orchestration Workflow as Infrastructure-as-Code.
+# Deploy with: databricks bundle deploy
+# Run with:    databricks bundle run retailedge_daily_run
+
+bundle:
+  name: retailedge_pipeline
+  databricks_cli_version: ">= 0.209"
+
+resources:
+  # 1. Delta Live Tables Pipeline Definition
+  pipelines:
+    retailedge_dlt_pipeline:
+      name: "RetailEdge DLT Pipeline (Bronze->Silver->Gold)"
+      target: "retailedge.silver"
+      development: true           # Set to false in prod for dedicated job clusters
+      continuous: false           # Triggered mode — ~70% cheaper than Continuous
+      channel: "CURRENT"          # Use latest Databricks runtime channel
+      libraries:
+        - notebook:
+            path: ./databricks/dlt/pipeline_bronze_to_silver.py
+        - notebook:
+            path: ./databricks/dlt/pipeline_silver_to_gold.py
+      configuration:
+        pipeline.s3_bucket: "retailedge-analytics-prod"
+        spark.databricks.delta.schema.autoMerge.enabled: "true"
+
+  # 2. Databricks Workflow (Job) Definition
+  jobs:
+    retailedge_daily_run:
+      name: "RetailEdge Daily Orchestration"
+      # Shared job cluster — all tasks share this cluster to minimize DBU costs.
+      # In prod, give each heavy task its own cluster for isolation.
+      job_clusters:
+        - job_cluster_key: "shared_job_cluster"
+          new_cluster:
+            spark_version: "14.3.x-scala2.12"  # 14.3 LTS — current enterprise LTS (2025)
+            node_type_id: "m5d.large"           # us-east-1 instance type
+            aws_attributes:
+              availability: "SPOT_WITH_FALLBACK"
+              zone_id: "us-east-1a"
+            num_workers: 2
+            spark_conf:
+              spark.databricks.delta.preview.enabled: "true"
+
+      tasks:
+        - task_key: "run_dlt_pipeline"
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.retailedge_dlt_pipeline.id}
+          description: "Runs the declarative Bronze -> Silver -> Gold DLT pipeline"
+
+        - task_key: "optimize_delta_tables"
+          depends_on:
+            - task_key: "run_dlt_pipeline"
+          job_cluster_key: "shared_job_cluster"
+          spark_python_task:
+            python_file: "./databricks/workflows/optimize_tables.py"
+          description: "OPTIMIZE (Liquid Clustering) + VACUUM all Bronze, Silver, and Gold Delta tables"
+
+        - task_key: "quarantine_recovery"
+          depends_on:
+            - task_key: "run_dlt_pipeline"
+          job_cluster_key: "shared_job_cluster"
+          notebook_task:
+            notebook_path: "./databricks/workflows/quarantine_recovery.py"
+          description: "Repair repairable quarantine records and route back to Bronze. Route unrecoverable to Dead Letter store."
+
+        - task_key: "export_to_snowflake"
+          depends_on:
+            - task_key: "optimize_delta_tables"
+            - task_key: "quarantine_recovery"
+          job_cluster_key: "shared_job_cluster"
+          notebook_task:
+            notebook_path: "./databricks/workflows/snowflake_export.py"
+          description: "Export Gold Delta tables to Snowflake for analyst-facing serving"
+
+        - task_key: "pipeline_health_check"
+          depends_on:
+            - task_key: "export_to_snowflake"
+          job_cluster_key: "shared_job_cluster"
+          notebook_task:
+            notebook_path: "./databricks/observability/dlt_pipeline_health.py"
+          description: "Query DLT Event Log for data quality SLA compliance check"
+
+# Environment Specific Configurations
+targets:
+  dev:
+    workspace:
+      host: "https://<YOUR-DATABRICKS-WORKSPACE-URL>"
+  prod:
+    workspace:
+      host: "https://<YOUR-DATABRICKS-WORKSPACE-URL>"
+    resources:
+      pipelines:
+        retailedge_dlt_pipeline:
+          development: false # Use production job clusters

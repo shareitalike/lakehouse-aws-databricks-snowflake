@@ -1,0 +1,123 @@
+# Databricks Notebook: Bronze → Silver (Structured Streaming)
+# MAGIC %md
+# MAGIC # 🌊 Structured Streaming: Bronze → Silver
+# MAGIC
+# MAGIC This notebook implements **Structured Streaming** using Databricks **Auto Loader**. 
+# MAGIC It watches the S3 Bronze folder and processes new files as soon as they land.
+# MAGIC
+# MAGIC **Key Concepts:**
+# MAGIC 1. **Auto Loader (`cloudFiles`):** Efficiently discovers new files in S3.
+# MAGIC 2. **Explicit Schema:** Uses our central `BRONZE_SCHEMA`.
+# MAGIC 3. **Checkpointing:** Ensures "Exactly-Once" processing if the job restarts.
+# MAGIC 4. **Micro-Batching:** Processes data in small chunks for low latency.
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## 1. Configuration & Schema Setup
+
+# COMMAND ----------
+from pyspark.sql import functions as F
+from pyspark.sql.types import *
+
+# --- CONFIGURATION (Match your S3 Bucket) ---
+S3_BUCKET = "retailedge-analytics-prod" # Auto-filled from your config
+BRONZE_PATH = f"s3a://{S3_BUCKET}/bronze/events"
+SILVER_PATH = f"s3a://{S3_BUCKET}/silver/events"
+CHECKPOINT_PATH = f"s3a://{S3_BUCKET}/_checkpoints/bronze_to_silver"
+
+# --- EXPLICIT SCHEMA (Industry Best Practice) ---
+BRONZE_SCHEMA = StructType([
+    StructField("event_id", StringType(), False),
+    StructField("event_time", StringType(), False),
+    StructField("user_id", IntegerType(), False),
+    StructField("event_type", StringType(), False),
+    StructField("product_id", IntegerType(), True),
+    StructField("price", DoubleType(), True),
+    StructField("device", StringType(), False),
+    StructField("country", StringType(), False),
+    StructField("ingestion_timestamp", StringType(), True),
+    StructField("processing_date", StringType(), True)
+])
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## 2. Read Stream (Auto Loader)
+
+# COMMAND ----------
+streaming_df = (spark.readStream
+    .format("cloudFiles")
+    .option("cloudFiles.format", "json")
+    .option("cloudFiles.schemaLocation", f"{CHECKPOINT_PATH}/schema") # Tracks schema evolution
+    .schema(BRONZE_SCHEMA)         # <--- EXPLICIT SCHEMA ENFORCEMENT
+    .load(BRONZE_PATH)
+)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## 3. Transformations (Silver Layer)
+
+# COMMAND ----------
+
+# 1. Cast types
+# 2. Add partition columns
+transformed_df = (streaming_df
+    .withColumn("event_time", F.to_timestamp("event_time"))
+    .withColumn("ingestion_timestamp", F.to_timestamp("ingestion_timestamp"))
+    .withColumn("year", F.date_format("event_time", "yyyy"))
+    .withColumn("month", F.date_format("event_time", "MM"))
+    .withColumn("day", F.date_format("event_time", "dd"))
+)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## 4. Stateful Deduplication (MERGE INTO Silver)
+# MAGIC 
+# MAGIC We use `foreachBatch` to perform a micro-batch MERGE operation.
+# MAGIC This ensures that if the upstream system sends duplicate `event_id`s,
+# MAGIC we update the existing row rather than appending a duplicate.
+
+# COMMAND ----------
+from delta.tables import DeltaTable
+
+def merge_to_silver(micro_batch_df, batch_id):
+    # 1. Deduplicate within the micro-batch itself
+    deduped_df = micro_batch_df.dropDuplicates(["event_id"])
+    
+    # 2. Check if the Silver table exists
+    if DeltaTable.isDeltaTable(spark, SILVER_PATH):
+        silver_table = DeltaTable.forPath(spark, SILVER_PATH)
+        
+        # 3. Perform the MERGE operation using Photon
+        (silver_table.alias("target")
+         .merge(
+            deduped_df.alias("source"),
+            "target.event_id = source.event_id"
+         )
+         .whenMatchedUpdateAll()
+         .whenNotMatchedInsertAll()
+         .execute()
+        )
+    else:
+        # Initial run: Create the table and partition it
+        (deduped_df.write
+         .format("delta")
+         .mode("append")
+         .partitionBy("year", "month", "day")
+         .save(SILVER_PATH)
+        )
+
+# Start the streaming query using foreachBatch
+query = (transformed_df.writeStream
+    .foreachBatch(merge_to_silver)
+    .option("checkpointLocation", CHECKPOINT_PATH)
+    .trigger(availableNow=True) # Cost optimization: Spin up, process, spin down
+    .start()
+)
+
+query.awaitTermination()
+
+print(f"✅ Streaming Batch Complete. Silver table deduplicated and updated at {SILVER_PATH}")

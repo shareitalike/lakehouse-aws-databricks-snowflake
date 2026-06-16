@@ -1,0 +1,71 @@
+# ==============================================================================
+# .gitignore — Enterprise Lakehouse Pipeline: AWS + Databricks + Snowflake
+# ==============================================================================
+# This file keeps the GitHub repo clean and professional.
+# Interview prep materials live in a SEPARATE, LOCAL-ONLY folder:
+#   F:\pyspark_study\project2_aws\Project_AWS2_interview\
+# ==============================================================================
+
+# --- Python -------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+build/
+.eggs/
+.mypy_cache/
+
+# --- Virtual Environments -----------------------------------------------------
+venv/
+.venv/
+env/
+.env
+
+# --- IDE & Editor -------------------------------------------------------------
+.vscode/
+.idea/
+*.swp
+*.swo
+*.suo
+
+# --- OS Artifacts -------------------------------------------------------------
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- AWS Credentials (NEVER commit these) ------------------------------------
+.aws/
+credentials
+*.pem
+*.key
+
+# --- Databricks Secrets & Credentials ----------------------------------------
+.databrickscfg
+databricks-token.txt
+
+# --- Lambda Build Artifacts (too large for GitHub, rebuild with pip install) --
+*.zip
+lambda/package/
+lambda/lambda_package.zip
+
+# --- Local Data & Test Artifacts ----------------------------------------------
+output/
+tmp/
+staging_data/
+all_events_merged.json
+*.json.tmp
+
+# --- Test Cache ---------------------------------------------------------------
+.pytest_cache/
+.coverage
+htmlcov/
+
+# --- Snapshots (local editor snapshots, not for version control) --------------
+.snapshots/
+
+# --- Personal Study Notes (NOT for GitHub — kept in Project_AWS2_interview/) --
+LEARNING_GUIDE.md
+RUNBOOK.md
+DOUBTS.md
+NOTES.md
