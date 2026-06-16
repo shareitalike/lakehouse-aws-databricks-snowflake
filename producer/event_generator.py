@@ -212,8 +212,8 @@ def run_producer(
     batch_size: int = 25,
 ) -> None:
     """Main loop — generate events and send to Kinesis in batches."""
-    region = os.environ.get("AWS_REGION", "ap-southeast-7")
-    stream_name = os.environ.get("KINESIS_STREAM_NAME", "user-activity-stream")
+    region = os.environ.get("AWS_REGION", "us-east-1")
+    stream_name = os.environ.get("KINESIS_STREAM_NAME", "retailedge-user-activity")
 
     logger.info(
         "producer_start | total=%d | eps=%d | batch=%d | stream=%s",
