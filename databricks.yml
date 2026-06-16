@@ -18,7 +18,7 @@ resources:
       target: "silver"              # Tables land in retailedge.silver.*
       development: true             # Interactive cluster
       continuous: false             # Triggered mode — ~70% cheaper than Continuous
-      channel: "CURRENT"            # Use latest Databricks runtime channel
+      channel: "PREVIEW"            # DBR 15.x — has patched UC gRPC agent (fixes Connection reset)
       libraries:
         - notebook:
             path: ./databricks/dlt/pipeline_bronze_to_silver.py
@@ -29,8 +29,6 @@ resources:
         spark.databricks.delta.schema.autoMerge.enabled: "true"
       clusters:
         - label: "default"
-          spark_conf:
-            spark.databricks.unityCatalog.enabled: "true"
           aws_attributes:
             availability: "ON_DEMAND"
 
