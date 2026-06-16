@@ -120,7 +120,7 @@ All tasks run on a shared `m5d.large` SPOT cluster in `us-east-1a` — minimisin
 ## Repository Structure
 
 ```
-aws-databricks-new-snowflake2/
+lakehouse-aws-databricks-snowflake/
 │
 ├── databricks.yml                      ← Asset Bundle: full pipeline IaC
 ├── config/
@@ -138,7 +138,7 @@ aws-databricks-new-snowflake2/
 │   │
 │   ├── observability/
 │   │   ├── dlt_pipeline_health.py       ← DLT Event Log SLA & expectation failure report
-│   │   ├── schema_evolution_demo.py     ← mergeSchema + Auto Loader evolution runbook
+│   │   ├── schema_evolution_runbook.py  ← mergeSchema + Auto Loader evolution runbook
 │   │   └── cost_optimization_finops.py  ← Liquid Clustering, CDF, FinOps framework
 │   │
 │   ├── unity_catalog/
