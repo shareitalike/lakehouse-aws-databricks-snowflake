@@ -1,3 +1,4 @@
+# Databricks notebook source
 # Databricks Python Module: Central Data Schemas
 
 from pyspark.sql.types import (

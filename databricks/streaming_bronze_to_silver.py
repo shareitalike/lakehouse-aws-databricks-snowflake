@@ -1,3 +1,4 @@
+# Databricks notebook source
 # Databricks Notebook: Bronze → Silver (Structured Streaming)
 # MAGIC %md
 # MAGIC # 🌊 Structured Streaming: Bronze → Silver
