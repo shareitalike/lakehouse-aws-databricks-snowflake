@@ -14,11 +14,13 @@ resources:
   pipelines:
     retailedge_dlt_pipeline:
       name: "RetailEdge DLT Pipeline (Bronze->Silver->Gold)"
-      catalog: "retailedge"
-      target: "silver"
-      development: false           # Set to false to bypass AWS trial NAT gateway connection resets
-      continuous: false           # Triggered mode — ~70% cheaper than Continuous
-      channel: "CURRENT"          # Use latest Databricks runtime channel
+      # NOTE: Unity Catalog requires a NAT Gateway in the VPC which is not available
+      # on Databricks Trial. Using Hive Metastore (default) as a pragmatic workaround.
+      # In production, re-add: catalog: "retailedge" after configuring the NAT Gateway.
+      target: "retailedge_silver"  # Hive Metastore target schema (catalog.schema format not needed)
+      development: true            # Interactive cluster — works fine with Hive Metastore
+      continuous: false            # Triggered mode — ~70% cheaper than Continuous
+      channel: "CURRENT"           # Use latest Databricks runtime channel
       libraries:
         - notebook:
             path: ./databricks/dlt/pipeline_bronze_to_silver.py
